@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WTC Voice Assistant</title>
+<meta name="theme-color" content="#5A3E8F">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-title" content="WTC Voice">
+<style>
+:root{--bg:#F6F3FA;--card:#FFFFFF;--fg:#1E1A26;--mut:#6B6577;--line:#E3DDEC;--pur:#5A3E8F;--red:#C42D4E;--me:#5A3E8F;--meFg:#fff;--err:#FDECEC;--errFg:#8A1C1C;--errLine:#F3B4B4}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15111D;--card:#221C2E;--fg:#F1EDF7;--mut:#A79FB5;--line:#352C45;--me:#6C4FA6;--err:#3A1C22;--errFg:#FFC9CF;--errLine:#6B2B36}}
+:root[data-theme="dark"]{--bg:#15111D;--card:#221C2E;--fg:#F1EDF7;--mut:#A79FB5;--line:#352C45;--me:#6C4FA6;--err:#3A1C22;--errFg:#FFC9CF;--errLine:#6B2B36}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans","Noto Nastaliq Urdu","Noto Sans Bengali",sans-serif;-webkit-tap-highlight-color:transparent}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.app{display:flex;flex-direction:column;height:100%;max-width:640px;margin:0 auto}
+header{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;background:linear-gradient(135deg,var(--pur),var(--red));color:#fff}
+header img{width:40px;height:40px;border-radius:50%;background:#fff;flex:none}
+header .t{flex:1;min-width:0}
+header b{display:block;font-size:17px;line-height:1.2}
+header small{display:block;font-size:12px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header button{flex:none;width:40px;height:40px;border-radius:12px;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:19px;padding:0}
+#log{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.me,.bot{max-width:88%;padding:10px 13px;border-radius:16px;font-size:16px;line-height:1.45;overflow-wrap:anywhere}
+.me{align-self:flex-end;background:var(--me);color:var(--meFg);border-bottom-right-radius:5px}
+.bot{align-self:flex-start;background:var(--card);border:1px solid var(--line);border-bottom-left-radius:5px}
+.bot ul{margin:8px 0 0;padding:8px 8px 0 20px;border-top:1px dashed var(--line);font-size:14px;color:var(--mut)}
+.bot li{margin-bottom:4px}
+.bot .act{margin-top:8px}
+.bot .act button{background:none;border:1px solid var(--line);color:var(--fg);border-radius:999px;padding:4px 12px;font-size:13px}
+.err{background:var(--err);border-color:var(--errLine);color:var(--errFg)}
+.hello{text-align:center;color:var(--mut);font-size:15px;padding:10px 6px 2px}
+.tips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.tips button{background:var(--card);border:1px solid var(--line);color:var(--fg);border-radius:999px;padding:8px 13px;font-size:14px}
+#st{min-height:24px;text-align:center;font-size:14px;font-weight:700;color:var(--pur);padding:0 16px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #st{color:#C9B6EE}}
+#st button{margin-left:8px;background:none;border:1px solid currentColor;color:inherit;border-radius:999px;padding:2px 12px;font-size:13px}
+.dock{padding:6px 16px calc(12px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:10px}
+#mic{width:84px;height:84px;border-radius:50%;border:0;background:var(--red);color:#fff;font-size:36px;box-shadow:0 6px 18px rgba(196,45,78,.45);transition:transform .15s}
+#mic:active{transform:scale(.95)}
+#mic.on{background:#B3261E;animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(196,45,78,.6)}50%{box-shadow:0 0 0 18px rgba(196,45,78,0)}}
+.miclbl{font-size:13px;color:var(--mut);margin-top:-4px}
+.row{display:flex;gap:8px;width:100%}
+#q{flex:1;min-width:0;padding:11px 13px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--fg);font-size:16px}
+#send{flex:none;width:48px;border-radius:14px;border:0;background:var(--pur);color:#fff;font-size:18px}
+.dots::after{content:'…';display:inline-block;animation:dots 1.2s steps(3) infinite}
+@keyframes dots{0%{content:'.'}33%{content:'..'}66%{content:'...'}}
+/* setup + settings */
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;z-index:10}
+.sheet[hidden]{display:none}
+.panel{background:var(--bg);width:100%;max-width:640px;max-height:92%;overflow-y:auto;border-radius:20px 20px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom))}
+.panel h2{margin:0 0 4px;font-size:20px}
+.panel p{margin:0 0 14px;color:var(--mut);font-size:14px;line-height:1.45}
+.panel label{display:block;font-size:13px;font-weight:700;margin:12px 0 5px}
+.panel input,.panel select{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--fg);font-size:16px}
+.panel .btn{width:100%;margin-top:16px;padding:14px;border:0;border-radius:14px;background:var(--pur);color:#fff;font-size:16px;font-weight:700}
+.panel .btn2{width:100%;margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--fg);font-size:15px}
+.panel .msg{margin-top:10px;font-size:14px;color:var(--errFg);min-height:20px}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.brand img{width:52px;height:52px;border-radius:50%}
+@media (prefers-reduced-motion:reduce){#mic.on,.dots::after{animation:none}}
+</style></head>
+<body>
+<div class="app">
+ <header><img src="data:image/jpeg;base64,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" alt="WTC"><div class="t"><b>WTC Voice Assistant</b><small id="sub">Office · ALL SITES · read only</small></div><button id="newc" aria-label="New chat" title="New chat">↺</button><button id="gear" aria-label="Settings">⚙</button></header>
+ <div id="log" aria-live="polite"></div>
+ <div id="st"></div>
+ <div class="dock">
+  <button id="mic" aria-label="Tap and speak">🎙</button>
+  <div class="miclbl" id="miclbl">Tap and speak</div>
+  <div class="row"><input id="q" type="text" placeholder="Or type your question…" autocomplete="off" enterkeyhint="send"><button id="send" aria-label="Send">➤</button></div>
+ </div>
+</div>
+
+<div class="sheet" id="setup" hidden><div class="panel">
+ <div class="brand"><img src="data:image/jpeg;base64,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" alt=""><div><h2>WTC Voice Assistant</h2><p style="margin:0">Connect to your WTC Inventory Report</p></div></div>
+ <label for="url">Web app link</label>
+ <input id="url" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
+ <p style="margin-top:6px">The same link storekeepers open. In Apps Script: Deploy › Manage deployments › copy the <b>Web app URL</b>.</p>
+ <label for="pin">Office PIN</label>
+ <input id="pin" type="password" inputmode="numeric" placeholder="Office PIN" autocomplete="off">
+ <button class="btn" id="connect">Connect</button>
+ <div class="msg" id="smsg"></div>
+</div></div>
+
+<div class="sheet" id="sets" hidden><div class="panel">
+ <h2>Settings</h2>
+ <label for="lang">I speak</label>
+ <select id="lang"><option value="en-GB">English</option><option value="ur-PK">اردو Urdu</option><option value="hi-IN">हिंदी Hindi</option><option value="ar-AE">العربية Arabic</option><option value="bn-BD">বাংলা Bengali</option></select>
+ <label for="voice">Voice</label>
+ <select id="voice"><option value="Kore">Kore – female (natural)</option><option value="Aoede">Aoede – female (natural)</option><option value="Leda">Leda – female (natural)</option><option value="Charon">Charon – male (natural)</option><option value="Orus">Orus – male (natural)</option><option value="Puck">Puck – male (natural)</option><option value="phone">Phone voice (fastest)</option><option value="off">No voice</option></select>
+ <label for="theme">Look</label>
+ <select id="theme"><option value="">Same as phone</option><option value="light">Light</option><option value="dark">Dark</option></select>
+ <button class="btn" id="setok">Done</button>
+ <button class="btn2" id="signout">Sign out (forget PIN)</button>
+</div></div>
+
+<script>
+var $=function(s){return document.querySelector(s)};
+function E(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function get(k,d){try{var v=localStorage.getItem('wtcv_'+k);return v==null?d:v}catch(e){return d}}
+function put(k,v){try{if(v==null)localStorage.removeItem('wtcv_'+k);else localStorage.setItem('wtcv_'+k,v)}catch(e){}}
+var A={url:get('url',''),pin:get('pin',''),hist:[],busy:false,rec:null,mr:null,ctx:null,src:null,n:0,sr:get('sr','1')==='1'};
+var TIPS=['Which sites have not done the weekly check?','What PPE is low or out of stock?','How much cement is at each site?','Any late tasks or overdue rentals?','What was written off as damaged this week?','Which excess materials are in the store?'];
+
+/* ---------- talking to the Google Sheet ---------- */
+function api(fn){var args=[].slice.call(arguments,1);
+ return fetch(A.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn:fn,args:args}),redirect:'follow'})
+  .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+  .catch(function(e){return{ok:false,error:navigator.onLine===false?'No internet connection.':'Could not reach the Google Sheet. Check the web app link in ⚙ Settings, and that the web app is deployed for "Anyone".'}})}
+
+/* ---------- chat ---------- */
+function st(t,stop){$('#st').innerHTML=t?'<span class="dots">'+E(t)+'</span>'+(stop?'<button id="stop">Stop</button>':''):''}
+function scrollEnd(){var l=$('#log');l.scrollTop=l.scrollHeight}
+function add(cls,html){var h=$('#log .hello');if(h){h.remove();var t=$('#log .tips');if(t)t.remove()}var d=document.createElement('div');d.className=cls;d.innerHTML=html;$('#log').appendChild(d);scrollEnd();return d}
+function hello(){$('#log').innerHTML='<div class="hello">👋 Tap <b>🎙</b> and ask anything about your sites, stock, tasks, rentals, excess materials or PPE.</div><div class="tips">'+TIPS.map(function(t){return'<button data-tip="'+E(t)+'">'+E(t)+'</button>'}).join('')+'</div>'}
+async function ask(text,audio){text=String(text||'').trim();if((!text&&!audio)||A.busy)return;quiet();unlock();$('#q').value='';
+ var me=add('me',audio?'🎙 <i>…</i>':E(text));A.busy=true;st(audio?'Listening to your question':'Checking your data');
+ var r=await api('aiAsk',A.pin,text,A.hist,audio||null);A.busy=false;st('');
+ if(r&&r.heard)me.innerHTML=E(r.heard);else if(audio)me.innerHTML='🎙 (voice question)';
+ if(!r||!r.ok){add('bot err','⚠ '+E((r&&r.error)||'Something went wrong.'));if(r&&/PIN/.test(r.error||''))showSetup();return}
+ A.hist.push({q:r.heard||text||'(voice)',a:r.say});if(A.hist.length>6)A.hist.shift();
+ var d=add('bot','<div>'+E(r.say)+'</div>'+(r.show&&r.show.length?'<ul>'+r.show.map(function(s){return'<li>'+E(s)+'</li>'}).join('')+'</ul>':'')+'<div class="act"><button data-again>🔊 Play again</button></div>');
+ d.querySelector('[data-again]').onclick=function(){quiet();unlock();speak(r.say)};
+ speak(r.say)}
+
+/* ---------- sound out ---------- */
+function unlock(){try{if(!A.ctx){var C=window.AudioContext||window.webkitAudioContext;if(C)A.ctx=new C()}if(A.ctx.state==='suspended')A.ctx.resume();var b=A.ctx.createBuffer(1,1,22050),s=A.ctx.createBufferSource();s.buffer=b;s.connect(A.ctx.destination);s.start(0)}catch(e){}
+ try{if(window.speechSynthesis&&!A.sp){A.sp=1;var u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}}catch(e){}}
+function quiet(){try{if(A.src){A.src.onended=null;A.src.stop()}}catch(e){}A.src=null;try{speechSynthesis.cancel()}catch(e){}A.n++;if(!A.busy&&!A.rec&&!A.mr)st('')}
+function wav(pcm16,rate){var n=pcm16.length*2,b=new ArrayBuffer(44+n),v=new DataView(b),w=function(o,s){for(var i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};
+ w(0,'RIFF');v.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,rate,true);v.setUint32(28,rate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n,true);
+ new Int16Array(b,44).set(pcm16);return new Uint8Array(b)}
+function b64ToBytes(b){var s=atob(b),u=new Uint8Array(s.length);for(var i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u}
+function bytesToB64(u){var s='',k=0x8000;for(var i=0;i<u.length;i+=k)s+=String.fromCharCode.apply(null,u.subarray(i,i+k));return btoa(s)}
+function play(b64,mime,n){return new Promise(function(res,rej){try{var u=b64ToBytes(b64);
+ if(!/wav/i.test(mime||'')){var m=/rate=(\d+)/.exec(mime||'');u=wav(new Int16Array(u.buffer,0,u.length>>1),m?+m[1]:24000)}
+ A.ctx.resume();A.ctx.decodeAudioData(u.buffer,function(buf){if(n!==A.n)return res();var s=A.ctx.createBufferSource();s.buffer=buf;s.connect(A.ctx.destination);s.onended=function(){if(A.src===s){A.src=null;st('')}res()};A.src=s;s.start(0)},function(){rej('decode')})}catch(e){rej(e)}})}
+function phoneVoice(text,n){return new Promise(function(res){if(!window.speechSynthesis||n!==A.n)return res();
+ var lang=$('#lang').value,all=speechSynthesis.getVoices(),want=lang.slice(0,2);
+ if(/[ঀ-৿]/.test(text))want='bn';else if(/[ऀ-ॿ]/.test(text))want='hi';else if(/[؀-ۿ]/.test(text)&&want!=='ar')want='ur';
+ var vs=all.filter(function(v){return(v.lang||'').slice(0,2).toLowerCase()===want});if(!vs.length&&want==='ur')vs=all.filter(function(v){return/^hi/i.test(v.lang)});
+ var sc=function(v){return(/natural|neural|premium|enhanced|siri/i.test(v.name)?4:0)+(/google/i.test(v.name)?3:0)+(v.localService?0:1)};vs.sort(function(a,b){return sc(b)-sc(a)});
+ var u=new SpeechSynthesisUtterance(text);if(vs[0]){u.voice=vs[0];u.lang=vs[0].lang}else u.lang=lang;u.rate=.97;u.onend=u.onerror=function(){st('');res()};speechSynthesis.cancel();speechSynthesis.speak(u)})}
+async function speak(text){var v=$('#voice').value,n=++A.n;if(v==='off'||!text)return;
+ if(v!=='phone'){st('Getting the voice ready',true);var r=await api('aiVoice',A.pin,text,v);if(n!==A.n)return;
+  if(r&&r.ok){st('Speaking',true);try{await play(r.data,r.mime,n);return}catch(e){}}}
+ if(n!==A.n)return;st('Speaking',true);await phoneVoice(text,n)}
+
+/* ---------- microphone ---------- */
+var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+function micOn(on,lbl){$('#mic').classList.toggle('on',on);$('#miclbl').textContent=lbl||(on?'Listening… tap to stop':'Tap and speak')}
+function listen(){quiet();unlock();if(A.rec){try{A.rec.stop()}catch(e){}return}if(A.mr){stopRec();return}
+ if(SR&&A.sr)return listenSR();return record()}
+function listenSR(){var r=new SR(),got='',failed=false;A.rec=r;r.lang=$('#lang').value;r.interimResults=true;r.continuous=false;
+ r.onstart=function(){micOn(true);st('')};
+ r.onresult=function(e){var t='';for(var i=0;i<e.results.length;i++)t+=e.results[i][0].transcript;got=t;$('#q').value=t};
+ r.onerror=function(e){if(e.error==='not-allowed'&&!navigator.mediaDevices){failed=true;add('bot err','🎙 Please allow the microphone for this page in your browser settings.')}
+  else if(e.error==='not-allowed'||e.error==='service-not-allowed'||e.error==='network'||e.error==='language-not-supported'){failed=true;A.sr=false;put('sr','0');setTimeout(record,50)}};
+ r.onend=function(){A.rec=null;micOn(false);if(!failed&&got.trim())ask(got)};
+ try{r.start()}catch(e){A.rec=null;A.sr=false;record()}}
+/* recording mode: works where the phone's speech typing is not available – Gemini listens to the recording */
+async function record(){if(!navigator.mediaDevices||!window.MediaRecorder){add('bot err','🎙 This browser cannot use the microphone. Please type your question.');return}
+ var stream;try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})}catch(e){add('bot err','🎙 The microphone is not allowed. Allow it for this page in your phone settings, then try again.');return}
+ var chunks=[],mr=new MediaRecorder(stream);A.mr=mr;A.stream=stream;micOn(true,'Listening… tap to stop');
+ mr.ondataavailable=function(e){if(e.data&&e.data.size)chunks.push(e.data)};
+ mr.onstop=async function(){stream.getTracks().forEach(function(t){t.stop()});clearInterval(A.vad);A.mr=null;micOn(false);
+  var blob=new Blob(chunks,{type:mr.mimeType||'audio/webm'});if(blob.size<2000||!A.spoke){st('');return}
+  st('Preparing your question');try{ask('',await toWav(blob))}catch(e){var b=new Uint8Array(await blob.arrayBuffer());ask('',{mime:(blob.type||'audio/webm').split(';')[0],data:bytesToB64(b)})}};
+ mr.start(250);A.spoke=false;
+ /* stop by itself after you finish speaking */
+ try{var an=A.ctx.createAnalyser(),srcN=A.ctx.createMediaStreamSource(stream),buf=new Uint8Array(an.fftSize),quietMs=0,t0=Date.now();srcN.connect(an);
+  A.vad=setInterval(function(){an.getByteTimeDomainData(buf);var m=0;for(var i=0;i<buf.length;i++)m=Math.max(m,Math.abs(buf[i]-128));
+   if(m>14){A.spoke=true;quietMs=0}else quietMs+=100;
+   if((A.spoke&&quietMs>1600)||Date.now()-t0>45000||(!A.spoke&&Date.now()-t0>8000))stopRec()},100)}catch(e){A.spoke=true}}
+function stopRec(){if(A.mr&&A.mr.state!=='inactive')A.mr.stop()}
+async function toWav(blob){var ab=await blob.arrayBuffer(),buf=await new Promise(function(res,rej){A.ctx.decodeAudioData(ab,res,rej)});
+ var rate=16000,len=Math.ceil(buf.duration*rate),O=window.OfflineAudioContext||window.webkitOfflineAudioContext,oc=new O(1,len,rate),s=oc.createBufferSource();s.buffer=buf;s.connect(oc.destination);s.start(0);
+ var out=await oc.startRendering(),f=out.getChannelData(0),p=new Int16Array(f.length);for(var i=0;i<f.length;i++){var x=Math.max(-1,Math.min(1,f[i]));p[i]=x<0?x*32768:x*32767}
+ return{mime:'audio/wav',data:bytesToB64(wav(p,rate))}}
+
+/* ---------- setup & settings ---------- */
+function showSetup(){$('#url').value=A.url;$('#pin').value='';$('#smsg').textContent='';$('#setup').hidden=false}
+$('#connect').onclick=async function(){var u=$('#url').value.trim(),p=$('#pin').value.trim();
+ if(!/^https:\/\/script\.google\.com\/.+\/exec/.test(u)){$('#smsg').textContent='Paste the full web app link – it starts with https://script.google.com/ and ends with /exec';return}
+ if(!p){$('#smsg').textContent='Type the office PIN.';return}
+ this.disabled=true;$('#smsg').textContent='Connecting…';A.url=u;var r=await api('aiPing',p);this.disabled=false;
+ if(!r.ok){$('#smsg').textContent='⚠ '+r.error;return}
+ if(!r.ready){$('#smsg').textContent='⚠ Connected, but the AI is not set up yet. In the Google Sheet: WTC Stock › 🤖 AI voice assistant – set Gemini key.';return}
+ A.pin=p;put('url',u);put('pin',p);$('#setup').hidden=true;api('aiWarm',A.pin)};
+$('#gear').onclick=function(){$('#sets').hidden=false};
+$('#setok').onclick=function(){$('#sets').hidden=true};
+$('#sets').onclick=function(e){if(e.target===this)this.hidden=true};
+$('#signout').onclick=function(){put('pin',null);A.pin='';A.hist=[];hello();$('#sets').hidden=true;showSetup()};
+$('#lang').value=get('lang','en-GB');$('#voice').value=get('voice','Kore');$('#theme').value=get('theme','');
+function theme(){var t=$('#theme').value;if(t)document.documentElement.setAttribute('data-theme',t);else document.documentElement.removeAttribute('data-theme')}theme();
+$('#lang').onchange=function(){put('lang',this.value);A.sr=true;put('sr','1')};$('#voice').onchange=function(){put('voice',this.value);quiet()};$('#theme').onchange=function(){put('theme',this.value);theme()};
+$('#mic').onclick=listen;$('#send').onclick=function(){ask($('#q').value)};
+$('#q').onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();ask(this.value)}};
+$('#log').onclick=function(e){var b=e.target.closest('[data-tip]');if(b)ask(b.dataset.tip)};
+$('#st').onclick=function(e){if(e.target.id==='stop')quiet()};
+$('#newc').onclick=function(){quiet();A.hist=[];hello()};
+try{speechSynthesis.getVoices()}catch(e){}
+hello();if(!A.url||!A.pin)showSetup();else api('aiWarm',A.pin);
+</script>
+</body></html>
